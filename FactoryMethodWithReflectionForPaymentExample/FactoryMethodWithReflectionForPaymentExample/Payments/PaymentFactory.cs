@@ -7,24 +7,11 @@ public class PaymentFactory : IPaymentFactory
 {
     public IPayment CreatePayment(string paymentTypeName)
     {
-        var assembly = Assembly.GetExecutingAssembly();
-        
-        string fullTypeName = $"FactoryMethodWithReflectionForPaymentExample.Payments.{paymentTypeName}";
-        
-        Type? paymentType = assembly.GetType(fullTypeName);
-        
-        if (paymentType == null)
+        var paymentProvider = (IPayment) Assembly.GetAssembly(typeof(IPayment)).CreateInstance("FactoryMethodWithReflectionForPaymentExample.Payments." + paymentTypeName);
+        if (paymentProvider == null)
         {
-            throw new Exception($"Payment type '{paymentTypeName}' not found");
+            throw new Exception("Payment " + paymentTypeName + " not found");
         }
-        
-        if (!typeof(IPayment).IsAssignableFrom(paymentType))
-        {
-            throw new Exception($"Payment type '{paymentTypeName}' does not implement IPayment interface");
-        }
-        
-        var paymentProvider = (IPayment) Activator.CreateInstance(paymentType)!;
-            
         return paymentProvider;
     }
 }
