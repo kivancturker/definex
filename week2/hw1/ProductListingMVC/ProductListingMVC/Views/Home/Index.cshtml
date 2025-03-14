@@ -1,0 +1,118 @@
+﻿@model List<ProductListingMVC.Models.Product>
+
+@{
+    ViewData["Title"] = "Products";
+}
+
+<div class="container mt-3">
+    <h1 class="mb-3">@ViewData["Title"]</h1>
+
+    <div class="position-relative mb-3">
+        <div class="input-group">
+            <input id="searchInput" type="text" class="form-control" placeholder="Search products..."
+                   aria-label="Search" name="search" autocomplete="off">
+            <button id="clearButton" class="btn btn-primary">Clear</button>
+        </div>
+        
+        <div id="productList" class="position-absolute w-100 bg-white border rounded shadow-sm d-none" style="z-index: 1000; max-height: 300px; overflow-y: auto;">
+        </div>
+    </div>
+
+    <div id="loadingIndicator" class="text-center d-none">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <div id="warning-container" class="col-12 d-none">
+        <div id="warning-text" class="alert">
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#searchInput").on("input", function (){
+                activateLoadingSpinner(true);
+                const searchTerm = $("#searchInput").val();
+                searchProducts(searchTerm, function (result) {
+                    if (result.isSuccess) {
+                        buildProductListHtml(result.data, searchTerm);
+                    }
+                    activateLoadingSpinner(false);
+                });
+            });
+            
+            $("#clearButton").on("click", function () {
+                const EMPTY_TERM = "";
+                // Reset all the state
+                $("#searchInput").val(EMPTY_TERM);
+                searchProducts(EMPTY_TERM, function (result) {
+                    buildProductListHtml(result.data, EMPTY_TERM);
+                });
+            });
+
+            function activateLoadingSpinner(isLoading) {
+                const LOADING_INDICATOR_ID = "#loadingIndicator";
+                const SPINNER_CLASS_NAME = "d-none";
+                isLoading ? $(LOADING_INDICATOR_ID).removeClass(SPINNER_CLASS_NAME) : $(LOADING_INDICATOR_ID).addClass(SPINNER_CLASS_NAME);
+            }
+            
+            function searchProducts(searchTerm, callback) {
+                if (searchTerm.length === 0) {
+                    callback({ isSuccess: true, data: [] });
+                    return;
+                }
+                $.ajax({
+                    url: '/search/' + searchTerm,
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function (data) {
+                        callback({ isSuccess: true, data: data });
+                    },
+                    error: function (error) {
+                        console.error(error);
+                        callback({ isSuccess: false, data: [] });
+                    }
+                });
+            }
+            
+            function buildProductListHtml(products, searchTerm) {
+                const $dropdown = $("#productList");
+                const $warningContainer = $("#warning-container");
+                const $warningText = $("#warning-text");
+                $dropdown.empty();
+                $warningContainer.addClass("d-none");
+
+                if (products.length === 0) {
+                    if (searchTerm.length > 0) {
+                        $warningContainer.removeClass("d-none");
+                        $warningText.addClass("alert-info");
+                        $warningText.html(`No products found matching "<strong>${searchTerm}</strong>"`);
+                    }
+                    $dropdown.addClass("d-none");
+                    return;
+                }
+
+                products.forEach(function(product) {
+                    const $item = $(`
+                        <div class="p-2 suggestion-item border-bottom" data-id="${product.id}">
+                            <div class="d-flex align-items-center">
+                                <div>
+                                    <div class="fw-bold">${product.name}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `);
+
+                    $dropdown.append($item);
+                });
+
+                // Show dropdown
+                $dropdown.removeClass("d-none");
+            }
+        });
+
+    </script>
+}
