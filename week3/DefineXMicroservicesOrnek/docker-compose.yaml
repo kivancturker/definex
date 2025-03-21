@@ -1,0 +1,103 @@
+﻿version: "3.8"
+
+services:
+  definex.web:
+    image: definex.web
+    build:
+      context: .
+      dockerfile: DefineXWeb/Dockerfile
+    ports:
+      - "52360:52360"
+    networks:
+      - backend
+    depends_on:
+      - definex.services.productapi
+      - definex.services.identity
+      - definex.services.shoppingcartapi
+      - definex.services.couponapi
+
+  definex.rabbitmq:
+    image: rabbitmq:4-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - backend
+
+  definex.services.productapi:
+    image: definex.services.productapi
+    build:
+      context: .
+      dockerfile: DefineX.Services.ProductAPI/Dockerfile
+    ports:
+      - "60087:60087"
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=definex.sqlserver,1433;User Id=sa;Password=reallyStrongPwd123;Database=DefineXProductAPI;MultipleActiveResultSets=true;TrustServerCertificate=True;
+    networks:
+      - backend
+    depends_on:
+      - definex.sqlserver
+
+  definex.services.identity:
+    image: definex.services.identity
+    build:
+      context: .
+      dockerfile: DefineX.Services.Identity/Dockerfile
+    ports:
+      - "43432:43432"
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=definex.sqlserver,1433;User Id=sa;Password=reallyStrongPwd123;Database=DefineXIdentityServer;MultipleActiveResultSets=true;TrustServerCertificate=True;
+    networks:
+      - backend
+    depends_on:
+      - definex.sqlserver
+
+  definex.services.shoppingcartapi:
+    image: definex.services.shoppingcartapi
+    build:
+      context: .
+      dockerfile: DefineX.Services.ShoppingCartAPI/Dockerfile
+    ports:
+      - "25982:25982"
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=definex.sqlserver,1433;User Id=sa;Password=reallyStrongPwd123;Database=DefineXShoppingCartAPI;MultipleActiveResultSets=true;TrustServerCertificate=True;
+      - MessageBus__Host=definex.rabbitmq
+    networks:
+      - backend
+    depends_on:
+      - definex.sqlserver
+
+  definex.services.couponapi:
+    image: definex.services.couponapi
+    build:
+      context: .
+      dockerfile: DefineX.Services.CouponAPI/Dockerfile
+    ports:
+      - "61848:61848"
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=definex.sqlserver,1433;User Id=sa;Password=reallyStrongPwd123;Database=DefineXCouponAPI;MultipleActiveResultSets=true;TrustServerCertificate=True;
+    networks:
+      - backend
+    depends_on:
+      - definex.sqlserver
+
+  definex.sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=reallyStrongPwd123
+    ports:
+      - "1433:1433"
+    networks:
+      - backend
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  sqlserver-data:
+    external: true
+    name: mssql_sqlserver_data
